@@ -3,7 +3,7 @@ request - parametrized serialized REST client
 Author: Jose Moreno
 Version: 0.1
 
-Why?
+<h1>Why?</h1>
 
 Because I have lots of JSON code for ACI that is hard to reuse, due to the embedded names in them. If you have the complete configuration of a tenant, and want to reuse it for another different tenant, first you have to run tons of search & replace.
 
@@ -14,7 +14,7 @@ request is essentially two utilities:
   * A list of files in JSON or XML format, and the URLs where they are to be posted
   * A list of variables inside of those files, and the values with which the variables should be replaced when posting
 
-- replacetext.py: a helper utility, that substitutes concrete values out of a text file (generated with the API inspector or the Save As button) with variables (with the syntax {{variable_name}}). The resulting parametrized text files can be used as input for request.py
+- textreplace.py: a helper utility, that substitutes concrete values out of a text file (generated with the API inspector or the Save As button) with variables (with the syntax {{variable_name}}). The resulting parametrized text files can be used as input for request.py. textreplace.py will take the replacements from a very simple YAML replace key file. The goal is to be able to work on complex replacement patterns (for example for long configs) just by modifying this file.
 
 The bulk of improvements of this project focus on request.py. I have to admit I did not create request.py, but received it from colleagues. Kudos to the original author, whoever that might be. I have added the following capabilities to request.py:
 
