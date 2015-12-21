@@ -16,6 +16,9 @@ request is essentially two utilities:
 
 - textreplace.py: a helper utility, that substitutes concrete values out of a text file (generated with the API inspector or the Save As button) with variables (with the syntax {{variable_name}}). The resulting parametrized text files can be used as input for request.py. textreplace.py will take the replacements from a very simple YAML replace key file. The goal is to be able to work on complex replacement patterns (for example for long configs) just by modifying this file.
 
+<h1>Requirements</h1>
+You just need Python 2.7, and a couple of libraries (check the import statements of request.py for the complete list)
+
 The bulk of improvements of this project focus on request.py. I have to admit I did not create request.py, but received it from colleagues. Kudos to the original author, whoever that might be. I have added the following capabilities to request.py:
 
 v0.1:
