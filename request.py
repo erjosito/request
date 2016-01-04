@@ -12,15 +12,40 @@ import yaml
 import argparse
 import re
 
-def replaceVariables (variables, data):
+
+# Browse the translation dictionary and solve recursive dependencies
+# Currently only one level of hierarchy supported (variables inside variables)
+def resolveVariables (variables):
+	for var in variables:
+		for key in var:				
+			# If any variable defined in the variable value
+			hits = re.findall ("\{\{[\w\s\.\-\_]+\}\}", var[key])
+			if len(hits) > 0:
+				replacedVariable = replaceVariables (variables, var[key])
+				var[key] = replacedVariable
+	return variables
+				
+				
+def replaceVariables (variables, data, mode = 0):
+# Modes (variable definition syntax)
+#   0: default, variables defined like {{variable_name}}
+#   1: variables defined like %{variable_name}
+
 	if len (variables) > 0:
 		newdata = data
 		# Replace all occurrences of the variable with its value
 		for var in variables:
-			for key in var:
-				old = "{{" + key + "}}"
-				new = var [key]
-				newdata = newdata.replace (old, new)
+			for key in var:				
+				try:
+					if mode == 1:
+						old = "%{" + key + "}"
+					else:
+						old = "{{" + key + "}}"
+					new = var [key]
+					newdata = newdata.replace (old, new)
+				except Exception as e:
+					print "Error when processing key %s: %s" % (key, str (e)) 
+					sys.exit (0)
 		if debug:
 			print '++++ PARAMETRIZED REQUEST (%s) ++++' % file
 			print newdata
@@ -34,9 +59,11 @@ def chkConfig (config):
 	try:
 		variablesDefined = True
 		variables = config['variables']
+		# Resolve recursive variables (currently only one level of recursion supported)
+		variables = resolveVariables (variables)
 	except Exception as e:
 		# Probably no variables section in the file
-		print "No variables defined in the config file!"
+		print "ERROR: No variables defined in the config file!"
 		variables = ""
 		variablesDefined = False
 		pass
@@ -49,9 +76,9 @@ def chkConfig (config):
 				with open (file, 'r') as payload:
 					data = payload.read()
 			except Exception as e:
-				print "Could not open file %s: %s" % (file, str(e))
+				print "ERROR: Could not open file %s: %s" % (file, str(e))
 			# Find variables in the file
-			hits = re.findall ("\{\{\w+\}\}", data)
+			hits = re.findall ("\{\{[\w\s\.\-\_]+\}\}", data)
 			# Remove duplicates converting to a set and back to an array
 			hits = set (hits)
 			for hit in hits:
@@ -64,6 +91,8 @@ def chkConfig (config):
 						for key in var:
 							if key == hit:
 								keyFound = True
+								if debug:
+									print "Variable %s found in config file" % key
 					if not keyFound:
 						print "ERROR: Variable %s (present in file %s) not found in the config file" % (hit, file)
 				else:
@@ -78,6 +107,8 @@ def runConfig (config, cookies):
 	try:
 		variablesDefined = True
 		variables = config['variables']
+		# Resolve recursive variables (currently only one level of recursion supported)
+		variables = resolveVariables (variables)		
 	except Exception as e:
 		# Probably no variables section in the file
 		variablesDefined = False
@@ -133,14 +164,15 @@ def runConfig (config, cookies):
 						print '-------- REQUEST (%s) --------' % file 
 					# If any substitution variable has been specified, replace and show
 					if variablesDefined:
-						newdata = replaceVariables (variables, data)
-					else:
-						newdata = data
+						data = replaceVariables (variables, data)
 					# Post
 					url = 'http://%s/api/node/mo/.xml' % config['host']
+					# Check the URL for variables too
+					if variablesDefined:
+						url = replaceVariables (variables, url)
 					r = requests.post( url,
 									   cookies = cookies,
-									   data = newdata )
+									   data = data )
 					result = xml.dom.minidom.parseString( r.text )
 					status = r.status_code
 					if status == 200:
@@ -166,14 +198,15 @@ def runConfig (config, cookies):
 						print '-------- REQUEST (%s) --------' % file 
 					# If any substitution variable has been specified, replace and show
 					if variablesDefined:
-						newdata = replaceVariables (variables, data)
-					else:
-						newdata = data
+						data = replaceVariables (variables, data)
 					# Post
 					url = 'http://%s/api/node/mo/.json' % config['host']
+					# Check the URL for variables too
+					if variablesDefined:
+						url = replaceVariables (variables, url)
 					r = requests.post( url,
 									   cookies = cookies,
-									   data = newdata )
+									   data = data )
 					result = json.loads ( r.text )
 					status = r.status_code
 					if status == 200:
@@ -230,7 +263,6 @@ if __name__ == "__main__":
 						   help='if requests.py should just verify that all variables have been specified in the config file')
 		parser.add_argument('--verbose', action="store_true",
 						   help='if additional output should be shown')
-
 		args = parser.parse_args()
 		cfgFile = args.configFile
 		testVariables = args.testVariables
@@ -239,12 +271,15 @@ if __name__ == "__main__":
 		parser.print_help ()
 		sys.exit (0)
 
+	# Load information from YAML file
 	with open( cfgFile, 'r' ) as config:
 		config = yaml.safe_load (config)
 
-
+	# Do what you have to do:
+	# - either testing (verify all variables are correctly defined)
 	if testVariables:
 		chkConfig (config)
+	# - or the real thing (login first, do the magic second)
 	else:
 		status = 0
 		cookies = login (config)

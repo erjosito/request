@@ -1,0 +1,1 @@
+{"totalCount":"1","imdata":[{"fvTenant":{"attributes":{"descr":"","dn":"uni/tn-{{tenantName}}","name":"{{tenantName}}","ownerKey":"","ownerTag":""},"children":[{"fvRsTenantMonPol":{"attributes":{"tnMonEPGPolName":""}}},{"fvAp":{"attributes":{"descr":"","name":"{{ANPName}}","ownerKey":"","ownerTag":"","prio":"unspecified"}}}]}}]

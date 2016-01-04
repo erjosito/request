@@ -1,0 +1,7 @@
+{"fvTenant":
+  {"attributes":
+    {"dn":"uni/tn-{{TenantName}}",
+     "status":"deleted"
+    },"children":[]
+  }
+}
