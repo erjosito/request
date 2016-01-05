@@ -1,0 +1,1 @@
+{"totalCount":"1","imdata":[{"fvTenant":{"attributes":{"descr":"","dn":"uni/tn-HelloWorld-Jose","name":"HelloWorld-Jose","ownerKey":"","ownerTag":""},"children":[{"fvRsTenantMonPol":{"attributes":{"tnMonEPGPolName":""}}},{"fvAp":{"attributes":{"descr":"","name":"MyApp","ownerKey":"","ownerTag":"","prio":"unspecified"}}}]}}]}

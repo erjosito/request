@@ -1,0 +1,4 @@
+method: POST
+url: http://muc-apic/api/node/mo/uni/tn-HelloWorld-Rec/ap-HelloWorld-Rec-AppX/epg-EPG1.json
+payload{"fvAEPg":{"attributes":{"dn":"uni/tn-HelloWorld-Rec/ap-HelloWorld-Rec-AppX/epg-EPG1","name":"EPG1","rn":"epg-EPG1","status":"created"},"children":[{"fvRsBd":{"attributes":{"tnFvBDName":"default","status":"created,modified"},"children":[]}}]}}
+

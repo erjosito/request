@@ -42,7 +42,10 @@ Improvements over the original request.py:
 - The option to parse the JSON/XML for variables, compare them to the variables defined in the YAML file, and report any missing variable that has not been defined in the YAML file
 - The option to run with more or less output (option --verbose)
 - One level of variables recursion supported (see the example "tenant_recursive", quotes need to be used)
-- URLs can be parametrised too
+- URLs can be parametrised too (although request.py uses the root URL for all XML and JSON requests)
+- You can define variables in the individual tests too. That way you can reuse the same JSON code multiple times in one
+   .cfg file, each time with different variables. Find an example in examples/tenant_with_epgs.
+   
 
 
 

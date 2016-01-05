@@ -25,11 +25,32 @@ def resolveVariables (variables):
 				var[key] = replacedVariable
 	return variables
 				
-				
-def replaceVariables (variables, data, mode = 0):
+
+# Merge a set of local and global variables
+# If the same variable exists in both sets, the local variable has preference
+def mergeVariables (localVariables, globalVariables):
+	# Browse globalVariables for duplicates, and eliminate them
+	for lvar in localVariables:
+		for lkey in lvar:
+			for gvar in globalVariables:
+				for gkey in gvar:
+					if lkey == gkey:
+						globalVariables.remove (gvar)
+	# Merge both lists, now there should not be any duplicate
+	mergedVariables = globalVariables + localVariables
+	mergedVariables = resolveVariables (mergedVariables)
+	if debug:
+		print 'Merging variable lists:'
+		print ' - Global variable list: %s' % str (globalVariables)
+		print ' - Local variable list:  %s' % str (localVariables)
+		print ' - Merged variable list: %s' % str (mergedVariables)
+	return mergedVariables
+
+# Replace variables (defined in the list "variables") in a text ("data")
 # Modes (variable definition syntax)
 #   0: default, variables defined like {{variable_name}}
 #   1: variables defined like %{variable_name}
+def replaceVariables (variables, data, mode = 0):
 
 	if len (variables) > 0:
 		newdata = data
@@ -47,9 +68,9 @@ def replaceVariables (variables, data, mode = 0):
 					print "Error when processing key %s: %s" % (key, str (e)) 
 					sys.exit (0)
 		if debug:
-			print '++++ PARAMETRIZED REQUEST (%s) ++++' % file
+			print '++++ Variable substitution ++++'
 			print newdata
-			print '---- PARAMETRIZED REQUEST (%s) ----' % file                 	
+			print '---- Variable substitution ----'                 	
 		return newdata
 	else:
 		return data
@@ -71,6 +92,22 @@ def chkConfig (config):
 	for t in tests:
 		type = t['type']
 		file = t['file']
+		# Get local variables
+		try:
+			localVariablesDefined = True
+			localVariables = t['variables']
+			# Merge local Variables with global Variables (if defined)
+			# mergeVariables already takes care of recursive variables
+			if variablesDefined:
+				localVariables = mergeVariables (variables, localVariables)
+			if debug:
+				print 'Local variables found, merged variable list: %s' % str (localVariables)
+		except Exception as e:
+			# Probably no variables section in this test
+			localVariablesDefined = False
+			localVariables = variables
+			pass
+
 		if type=='json' or type=='xml':
 			try:
 				with open (file, 'r') as payload:
@@ -84,10 +121,10 @@ def chkConfig (config):
 			for hit in hits:
 				# Remove the "{{" and "}}"
 				hit = hit [2 : len (hit)-2]
-				if variablesDefined:
+				if (variablesDefined or localVariablesDefined):
 					# Look for that var in the variables dictionary
 					keyFound = False
-					for var in variables:
+					for var in localVariables:
 						for key in var:
 							if key == hit:
 								keyFound = True
@@ -117,8 +154,21 @@ def runConfig (config, cookies):
 	tests = config['tests']
 	for t in tests:
 		type = t['type']
-		url = 'http://%s/%s' % (config['host'],t['path'])
 		file = t['file']
+
+		# See whether there are local variables in this test
+		try:
+			localVariablesDefined = True
+			localVariables = t['variables']
+			# Merge local Variables with global Variables (if defined)
+			# mergeVariables already takes care of recursive variables
+			if variablesDefined:
+				localVariables = mergeVariables (variables, localVariables)
+		except Exception as e:
+			# Probably no variables section in this test
+			localVariablesDefined = False
+			localVariables = variables
+			pass
 		
 		# Verify the file exists
 		try:
@@ -129,7 +179,9 @@ def runConfig (config, cookies):
 			fileFound = False
 
 		if fileFound:
+
 			if type=='file':
+				url = 'http://%s/%s' % (config['host'],t['path'])
 				with open(file,'r') as package:
 					if ( status==200) and ('wait' in t):
 						time.sleep( t['wait'] )
@@ -150,6 +202,7 @@ def runConfig (config, cookies):
 						print result.toprettyxml()
 						print '-------- RESPONSE (%s) --------' % file
 						print status
+
 			elif type=='xml':
 				with open( file, 'r' ) as payload:
 					if ( status==200) and ('wait' in t):
@@ -163,13 +216,14 @@ def runConfig (config, cookies):
 						print data
 						print '-------- REQUEST (%s) --------' % file 
 					# If any substitution variable has been specified, replace and show
-					if variablesDefined:
-						data = replaceVariables (variables, data)
-					# Post
+					if (variablesDefined or localVariablesDefined):
+						data = replaceVariables (localVariables, data)
+					# Post (always use the generic root URL?)
 					url = 'http://%s/api/node/mo/.xml' % config['host']
+					#url = 'http://%s/%s' % (config['host'],t['path'])
 					# Check the URL for variables too
-					if variablesDefined:
-						url = replaceVariables (variables, url)
+					#if (variablesDefined or localVariablesDefined):
+					#	url = replaceVariables (localVariables, url)
 					r = requests.post( url,
 									   cookies = cookies,
 									   data = data )
@@ -184,6 +238,7 @@ def runConfig (config, cookies):
 						print result.toprettyxml()
 						print '-------- RESPONSE (%s) --------' % file
 						print status
+
 			elif type=='json':
 				with open( file, 'r' ) as payload:
 					if( status==200) and ('wait' in t):
@@ -197,13 +252,14 @@ def runConfig (config, cookies):
 						print data
 						print '-------- REQUEST (%s) --------' % file 
 					# If any substitution variable has been specified, replace and show
-					if variablesDefined:
-						data = replaceVariables (variables, data)
-					# Post
+					if (variablesDefined or localVariablesDefined):
+						data = replaceVariables (localVariables, data)
+					# Post (always use the generic root URL?)
 					url = 'http://%s/api/node/mo/.json' % config['host']
+					#url = 'http://%s/%s' % (config['host'],t['path'])
 					# Check the URL for variables too
-					if variablesDefined:
-						url = replaceVariables (variables, url)
+					#if (variablesDefined or localVariablesDefined):
+					#	url = replaceVariables (localVariables, url)
 					r = requests.post( url,
 									   cookies = cookies,
 									   data = data )
