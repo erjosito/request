@@ -44,9 +44,11 @@ Improvements over the original request.py:
 - One level of variables recursion supported (see the example "tenant_recursive", quotes need to be used)
 - URLs can be parametrised too (although request.py uses the root URL for all XML and JSON requests)
 - You can define variables in the individual tests too. That way you can reuse the same JSON code multiple times in one
-   .cfg file, each time with different variables. Find an example in examples/tenant_with_epgs.
+   .cfg file, each time with different variables. See the example "tenant_with_epgs".
    
-
+<h2>v0.2</h2>
+In this version the option --ucsdjs was implemented. When used, instead of configuring the APIC, JavaScript files will be 
+output, that can be use to define custom tasks in UCS Director.
 
 
 
