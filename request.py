@@ -176,7 +176,7 @@ def generateJSVarList (data):
 def generateJS (data, jsVarList):
 	# Load the template for the JavaScript file, it needs to be stored in the same
 	#   directory as this script
-	jstemplate = 'RESTcall.js'
+	jstemplate = os.path.join(os.path.dirname(__file__), 'RESTcall.js')
 	try:
 		js = open (jstemplate,'r')
 		jscode = js.read ()
