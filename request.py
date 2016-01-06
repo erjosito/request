@@ -1,4 +1,21 @@
 #!/usr/bin/python
+'''
+
+Created by Jose Moreno, January 2016
+v0.3
+
+Expansion of an existing file (request.py) that was able to concatenate multiple
+REST requests to ACI.
+
+This script can parametrise those requests so that they can be reused
+
+Additionally, it can generate content that can be leveraged in UCS Director, such as
+JavaScript code for custom tasks, or a WFDX file containing the tasks themselves.
+
+Requires having the file RESTcall.js in the same directory (template for generating
+Java Script code)
+
+'''
 
 import glob
 import json
@@ -135,9 +152,30 @@ def chkConfig (config):
 				else:
 					print "ERROR: Variable %s (present in file %s), although no variable defined in config file" % (hit, file)
 
-def generateJavaScript (config, printJs, printWfdx):
+# Returns a list with all variables to be defined in a JS file
+def generateJSVarList (data):
+	# Initialize
+	jsVarList = []
+	# Find all "{{x}}" variables in the JSON file
+	hits = re.findall ("\{\{[\w\s\.\-\_]+\}\}", data)
+	# Remove duplicates converting to a set
+	hits = set (hits)
+	for hit in hits:
+		# Remove the "{{" and "}}"
+		varName = hit [2 : len (hit)-2]
+		jsVarList.append (varName)
+	# Add IP, username and password to the list of variables
+	jsVarList.append ("username")
+	jsVarList.append ("password")
+	jsVarList.append ("apicIP")
+	# And return it
+	return jsVarList
 
-	# Load the template for the JavaScript file
+# Generates JavaScript code for an UCSD custom task
+# It requires the JSON code to be pushed, plus a list of variables to be defined in the script
+def generateJS (data, jsVarList):
+	# Load the template for the JavaScript file, it needs to be stored in the same
+	#   directory as this script
 	jstemplate = 'RESTcall.js'
 	try:
 		js = open (jstemplate,'r')
@@ -145,11 +183,82 @@ def generateJavaScript (config, printJs, printWfdx):
 	except Exception as e:
 		print "ERROR: Could not find JavaScript template %s" % jstemplate
 		sys.exit (1)
-
-	# Initialize variables
+	# First we need to escape the quote signs and escape the line breaks
+	# Help: chr(34)=", chr(39)=', chr(92)=\
+	data = data.replace (chr(34), chr(92) + chr(34))
+	data = data.replace (chr(39), chr(92) + chr(34))
+	data = data.replace ("\n", " \\\n")
+	# Instead of replacing the variables with its real value, we need to
+	#  change them to JS format. For example, where it said tn-{{tenantName}}
+	#  we need to write tn-"+tenantName+"
 	jsVars = ""
-	jsVarList = []
+	for varName in jsVarList:
+		# Put the variable in Javascript format
+		if varName != "username" and varName != "password" and varName != "apicIP":
+			old = "{{" + varName + "}}"
+			new = '" + ' + varName + ' + "'
+			data = data.replace (old, new)
+		jsVars += "var " + varName + " = input." + varName + "\n"		
+	# Now we need to create our JavaScript. There are 3 items we need to
+	#   modify from the JSTemplate:
+	#   1. Create variables (our variable list plus global parameters)
+	#	2. Assign the data variable
+	#   3. Assign the URL variable
+	jscode = jscode.replace ("{{Variables}}", jsVars)
+	jscode = jscode.replace ("{{data}}", data)
+	if type == 'xml':
+		url = '/api/node/mo/.xml'
+	else:
+		url = '/api/node/mo/.json'
+	jscode = jscode.replace ("{{url}}", url)
+	# We are done!
+	return jscode
 
+# Generate the WFDX for an UCSD custom task
+# It requires a name to be given to the task, plus the list of input variables to be defined
+def generateWFDX (jscode, taskName, jsVarList):
+	# We will use the filename (minus extension) as task name
+	JSONtaskTemplate = '{"name":"{{Name}}","label":"{{Name}}","registerUnderTree":"{{Tree}}","ucsdFromVersion":null,"isActive":true,"summary":"","description":"","config":{"name":"InputConfig","fields":{"list":[{{InputVariables}}],"moTypeName":"com.cloupia.service.cIM.inframgr.mdui.MDUIFieldDescr","validatorName":"MDUIFieldListValidator"}},"outputs":{"list":[{{OutputVariables}}],"moTypeName":"com.cloupia.service.cIM.inframgr.mdui.MDUIWorkflowTaskOutputDescr","validatorName":"MDUIOutputListValidator"},"executionLang":"Javascript","executionScript":"{{Script}}","controllerImpl":{"list":[],"moTypeName":"com.cloupia.lib.cMacroUI.MacroControllerScript","validatorName":null}}'
+	JSONtask = JSONtaskTemplate.replace ("{{Name}}", taskName)
+	JSONtask = JSONtask.replace ("{{Tree}}", "APIC")
+
+	# Now generate JSON for the input variables
+	JSONvars = ""
+	JSONvarTemplate = '{"name":"{{Name}}","label":"{{Name}}","persist":true,"columnInfo":null,"type":"text","mapToType":"gen_text_input","mandatory":true,"rbid":"","size":"medium","help":"","annotation":"","group":"","validate":false,"formManagedTable":false,"addEntryForm":"","editEntryForm":"","deleteEntryForm":"","moveUpForm":"","moveDownForm":"","infoEntryForm":"","runActionForm":"","editabe":true,"hidden":false,"multiline":false,"maxLength":128,"lov":"","lovProvider":"","order":99999,"uploadDir":"","table":"","validator":"","regex":".*","regexLabel":".*","minValue":-9223372036854775808,"maxValue":9223372036854775807,"hideFieldName":"","hideFieldValue":"","hideFieldCondition":"EQ","htmlPopupTag":"","htmlPopupLabel":"","htmlPopupStyle":0,"htmlPopupText":"","view":"","values":[]}'
+	# We had compiled a list of variables
+	for varName in jsVarList:
+		if len(JSONvars) > 0:
+			JSONvars += ","
+		JSONvars += JSONvarTemplate.replace ("{{Name}}", varName)
+
+	JSONtask = JSONtask.replace ("{{InputVariables}}", JSONvars)
+
+	# No output variables for the time being...
+	JSONtask = JSONtask.replace ("{{OutputVariables}}", "")
+
+	# And finally, the script (we need to escape backslash and double quotes first)
+	escapedJScode = jscode.replace (chr (92), chr (92) + chr (92))			    	# \ -> \\
+	escapedJScode = escapedJScode.replace (chr (34), chr (92) + chr (34))           # " -> \"
+
+	JSONtask = JSONtask.replace ("{{Script}}", escapedJScode)
+
+	# Last step, encoding to Base64
+	JSONtask64 = base64.b64encode (JSONtask)
+
+	# And finally, wrap it up in XML
+	XMLtaskTemplate = '<?xml version="1.0" ?><OrchExportInfo><Time>Thu Feb 12 13:12:05 UTC 2015</Time><User></User><Comments></Comments><UnifiedFeatureAssetInfo><addiInfo></addiInfo><featureAssetEntry><data><![CDATA[{"taskName":"{{Name}}","taskLabel":"{{Name}}","isActive":true,"taskSummary":"","taskDescription":"","taskDetails":"{{taskDetails}}","taskData":"{{TaskData64}}"}]]></data></featureAssetEntry><type>CUSTOM_TASKS</type></UnifiedFeatureAssetInfo><version>3.0</version></OrchExportInfo>'
+	XMLtask = XMLtaskTemplate.replace ("{{TaskData64}}", JSONtask64)
+	XMLtask = XMLtask.replace ("{{Name}}", taskName)
+	# No task details supported as of this version
+	XMLtask = XMLtask.replace ("{{taskDetails}}", "Task detail generation not supported just yet")
+
+	# We are done
+	return XMLtask
+	
+# ******************************************************************
+# WARNING: multiple tests in one YAML config file not supported yet
+# ******************************************************************
+def generateUCSDCode (config, printJs, printWfdx):
 	# Browse the tests
 	tests = config['tests']
 	for t in tests:
@@ -164,49 +273,14 @@ def generateJavaScript (config, printJs, printWfdx):
 			except Exception as e:
 				print "ERROR: Could not find file %s" % file
 				fileFound = False
-			if fileFound:
-				# First we need to escape the quote signs and escape the line breaks
-				# Help: chr(34)=", chr(39)=', chr(92)=\
-				data = data.replace (chr(34), chr(92) + chr(34))
-				data = data.replace (chr(39), chr(92) + chr(34))
-				data = data.replace ("\n", " \\\n")
-				# Instead of replacing the variables with its real value, we need to
-				#  change them to JS format. For example, where it said tn-{{tenantName}}
-				#  we need to write tn-"+tenantName+"
-				hits = re.findall ("\{\{[\w\s\.\-\_]+\}\}", data)
-				# Remove duplicates converting to a set
-				hits = set (hits)
-				for hit in hits:
-					# We want to replace the variable occurrence
-					old = hit
-					# And calculate the new value
-					varName = hit [2 : len (hit)-2]   # Remove the "{{" and "}}"
-					jsVarList.append (varName)        # A list with the JS variables will come handy later
-					jsVars += "var " + varName + " = input." + varName + "\n"
-					new = '" + ' + varName + ' + "'
-					data = data.replace (old, new)
-				# Add IP, username and password to the list of variables
-				jsVars += "var username = input.username" + "\n"
-				jsVars += "var password = input.password" + "\n"
-				jsVars += "var apicIP = input.apicIP" + "\n"				
-				# Now we need to create our JavaScript. There are 3 items we need to
-				#   modify from the JSTemplate:
-				#   1. Create variables (our variable list plus global parameters)
-				#	2. Assign the data variable
-				#   3. Assign the URL variable
-				jscode = jscode.replace ("{{Variables}}", jsVars)
-				jscode = jscode.replace ("{{data}}", data)
-				if type == 'xml':
-					url = '/api/node/mo/.xml'
-				else:
-					url = '/api/node/mo/.json'
-				jscode = jscode.replace ("{{url}}", url)
+			if fileFound:			
+				# Generate the JS code
+				jsVarList = generateJSVarList (data)
+				jscode = generateJS (data, jsVarList)
 				if printJs:
-					print jscode
-
-				# Let's go for the task JSON code
-				# We will use the filename (minus extension) as task name
-				JSONtaskTemplate = '{"name":"{{Name}}","label":"{{Name}}","registerUnderTree":"{{Tree}}","ucsdFromVersion":null,"isActive":true,"summary":"","description":"","config":{"name":"InputConfig","fields":{"list":[{{InputVariables}}],"moTypeName":"com.cloupia.service.cIM.inframgr.mdui.MDUIFieldDescr","validatorName":"MDUIFieldListValidator"}},"outputs":{"list":[{{OutputVariables}}],"moTypeName":"com.cloupia.service.cIM.inframgr.mdui.MDUIWorkflowTaskOutputDescr","validatorName":"MDUIOutputListValidator"},"executionLang":"Javascript","executionScript":"{{Script}}","controllerImpl":{"list":[],"moTypeName":"com.cloupia.lib.cMacroUI.MacroControllerScript","validatorName":null}}'
+					print jscode				
+				# Let's go for the custom task, using the test filename as name for the custom task
+				# First, derive a usable name out of the filename
 				if file[len(file)-4:len(file)] == "json":
 					taskName = file[0:len(file)-5]
 				elif file[len(file)-3:len(file)] == "xml":
@@ -215,47 +289,12 @@ def generateJavaScript (config, printJs, printWfdx):
 				for i in range (0, len (taskName)):
 					if taskName[i] == "/":
 						newTaskName = taskName [i+1 : len(taskName)]
-				taskName = newTaskName
-				JSONtask = JSONtaskTemplate.replace ("{{Name}}", taskName)
-				JSONtask = JSONtask.replace ("{{Tree}}", "APIC")
-
-				# Now generate JSON for the input variables
-				JSONvars = ""
-				JSONvarTemplate = '{"name":"{{Name}}","label":"{{Name}}","persist":true,"columnInfo":null,"type":"text","mapToType":"gen_text_input","mandatory":true,"rbid":"","size":"medium","help":"","annotation":"","group":"","validate":false,"formManagedTable":false,"addEntryForm":"","editEntryForm":"","deleteEntryForm":"","moveUpForm":"","moveDownForm":"","infoEntryForm":"","runActionForm":"","editabe":true,"hidden":false,"multiline":false,"maxLength":128,"lov":"","lovProvider":"","order":99999,"uploadDir":"","table":"","validator":"","regex":".*","regexLabel":".*","minValue":-9223372036854775808,"maxValue":9223372036854775807,"hideFieldName":"","hideFieldValue":"","hideFieldCondition":"EQ","htmlPopupTag":"","htmlPopupLabel":"","htmlPopupStyle":0,"htmlPopupText":"","view":"","values":[]}'
-                # We had compiled a list of variables
-				for varName in jsVarList:
-					if len(JSONvars) > 0:
-						JSONvars += ","
-					JSONvars += JSONvarTemplate.replace ("{{Name}}", varName)
-
-				# Testing
-				JSONtask = JSONtask.replace ("{{InputVariables}}", JSONvars)
-				#JSONtask = JSONtask.replace ("{{InputVariables}}", "")
-
-				# No output variables for the time being...
-				JSONtask = JSONtask.replace ("{{OutputVariables}}", "")
-
-				# And finally, the script (we need to escape backslash and double quotes first)
-				escapedJScode = jscode.replace (chr (92), chr (92) + chr (92))			    	# \ -> \\
-				escapedJScode = escapedJScode.replace (chr (34), chr (92) + chr (34))           # " -> \"
-				escapedJScode = escapedJScode.replace (chr (10), chr (92) + chr (92) + "n")     # \n -> \\n
-
-				# Testing
-				JSONtask = JSONtask.replace ("{{Script}}", escapedJScode)
-				#JSONtask = JSONtask.replace ("{{Script}}", "")
-
-				# Last step, encoding to Base64
-				JSONtask64 = base64.b64encode (JSONtask)
-				
-				# And finally, wrap it up in XML
-				XMLtaskTemplate = '<?xml version="1.0" ?><OrchExportInfo><Time>Thu Feb 12 13:12:05 UTC 2015</Time><User></User><Comments></Comments><UnifiedFeatureAssetInfo><addiInfo></addiInfo><featureAssetEntry><data><![CDATA[{"taskName":"{{Name}}","taskLabel":"{{Name}}","isActive":true,"taskSummary":"","taskDescription":"","taskDetails":"{{taskDetails}}","taskData":"{{TaskData64}}"}]]></data></featureAssetEntry><type>CUSTOM_TASKS</type></UnifiedFeatureAssetInfo><version>3.0</version></OrchExportInfo>'
-				XMLtask = XMLtaskTemplate.replace ("{{TaskData64}}", JSONtask64)
-				XMLtask = XMLtask.replace ("{{Name}}", taskName)
-				# No task details supported as of this version
-				XMLtask = XMLtask.replace ("{{taskDetails}}", "Task detail generation not supported just yet")
-				
+				# Generate WFDX code
+				wfdx = generateWFDX (jscode, newTaskName, jsVarList)
 				if printWfdx:
-					print XMLtask
+					print wfdx
+	
+
 				
 def runConfig (config, cookies):
 	# Variablie initialization
@@ -465,9 +504,9 @@ if __name__ == "__main__":
 		chkConfig (config)
 	# - or the real thing (login first, do the magic second)
 	elif (ucsdjs):
-		generateJavaScript (config, True, False)
+		generateUCSCode (config, True, False)
 	elif (ucsdwfdx):
-		generateJavaScript (config, False, True)
+		generateUCSDCode (config, False, True)
 	else:
 		status = 0
 		cookies = login (config)
