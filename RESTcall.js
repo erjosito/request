@@ -26,7 +26,7 @@ importPackage(org.apache.commons.httpclient.auth);
 // Static Bodytext Data.
 //
 var loginData  = "<aaaUser name=\"" + username + "\" pwd=\"" + password + "\" />";
-var logoutData = "<aaaUser name=\"" + username + "\"  />\";
+var logoutData = "<aaaUser name=\"" + username + "\"  />";
 
 //
 // Static URIs.
