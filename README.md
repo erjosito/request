@@ -41,10 +41,10 @@ Improvements over the original request.py:
 - The option to read a "variables" section out of the yaml file, and replace in each JSON/XML file the variable by its value (option --testVariables)
 - The option to parse the JSON/XML for variables, compare them to the variables defined in the YAML file, and report any missing variable that has not been defined in the YAML file
 - The option to run with more or less output (option --verbose)
-- One level of variables recursion supported (see the example "tenant_recursive", quotes need to be used)
+- One level of variables recursion supported (see the example 'tenant_recursive', quotes need to be used)
 - URLs can be parametrised too (although request.py uses the root URL for all XML and JSON requests)
 - You can define variables in the individual tests too. That way you can reuse the same JSON code multiple times in one
-   .cfg file, each time with different variables. See the example "tenant_with_epgs".
+   .cfg file, each time with different variables. See the example 'tenant_with_epgs'.
    
 <h2>v0.2</h2>
 In this version the option --ucsdjs was implemented. When used, instead of configuring the APIC, JavaScript files will be 
@@ -52,12 +52,11 @@ output, that can be use to define custom tasks in UCS Director.
 - You can use the option --ucsd to generate on stdout JavaScript code
 - You can use the option --ucsdwfdx to generate on stdout a WFDX file that can be imported to UCS Director
 - Additional modularity in the functions to generate JavaScript or WFDX content
-- Sample particular case with script genWFDX.py, that can be used in a Web form
+- Sample particular case with script genWFDX.py, that can be used in a Web form (included the example page wfdx-generator.php)
 
-<h2>To Do</h2>
+<h2>Coming soon</h2>
 Hopefully coming in future versions:
 - Insert rollback attribute support in the YAML file
 - Support multiple custom tasks in a single WFDX file
-
-
-
+- Implement rollback task support in the WFDX generation
+- password variable generated in the wfdx file of the correct type, so that characters typed are masked
