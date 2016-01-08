@@ -66,7 +66,4 @@ output, that can be use to define custom tasks in UCS Director.
 
 <h2>Coming soon</h2>
 Hopefully coming in future versions:
-- Insert rollback attribute support in the YAML file
-- Support multiple custom tasks in a single WFDX file
-- Implement rollback task support in the WFDX generation
-- password variable generated in the wfdx file of the correct type, so that characters typed are masked
+- Using UCSD APIC IDs instead of IP/user/pwd combination
