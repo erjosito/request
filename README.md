@@ -54,6 +54,16 @@ output, that can be use to define custom tasks in UCS Director.
 - Additional modularity in the functions to generate JavaScript or WFDX content
 - Sample particular case with script genWFDX.py, that can be used in a Web form (included the example page wfdx-generator.php)
 
+<h2>v0.3</h2>
+- Rollback functionality added (check the example 'tenant')
+- Rollback functionality added to UCSD WFDX files. Note that currently there is no easy
+  way to map a specific commit test to a specific rollback test, so the mapping is done
+  sequentially: the first rollback test is configured as the rollback task of the first
+  commit test.
+- Variable check extended to URL
+- Path definition in the config file optional
+- Password input type for UCS Director custom tasks
+
 <h2>Coming soon</h2>
 Hopefully coming in future versions:
 - Insert rollback attribute support in the YAML file

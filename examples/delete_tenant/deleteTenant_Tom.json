@@ -1,6 +1,6 @@
 {"fvTenant":
   {"attributes":
-    {"dn":"uni/tn-{{tenantName}}",
+    {"dn":"uni/tn-HelloWorld-Tom",
      "status":"deleted"
     },"children":[]
   }

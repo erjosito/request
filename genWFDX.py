@@ -30,12 +30,16 @@ if __name__ == "__main__":
 	# Find arguments and flags
 	try:
 		parser = argparse.ArgumentParser (description = 'Process XML or JSON code, and generate a WFDX file that can be imported to UCS Director')
-		parser.add_argument('dataFile',
+		parser.add_argument('-d', '--dataFile', type=str,
 						   help='the file where JSON/XML code is stored')
-		parser.add_argument('varFile',
+		parser.add_argument('-v', '--varFile', type=str, 
 						   help='the file containing variables in YAML format')
-		parser.add_argument('taskName',
+		parser.add_argument('-n', '--taskName', type=str,
 						   help='the name to be given to the task in the WFDX file')
+		parser.add_argument('-r', '--rollbackFile', type=str, nargs='?', 
+						   help='optional, the name of the file containing the rollback code')
+		parser.add_argument('-q', '--rollbackName', type=str, nargs='?', 
+						   help='optional, the name to assign to the rollback task')
 		parser.add_argument('--onlyJS', action="store_true",
 						   help='specify if you only want to generate JavaScript code, instead of the whole WFDX file')
 		parser.add_argument('--onlyPayload', action="store_true",
@@ -46,6 +50,9 @@ if __name__ == "__main__":
 		dataFile = args.dataFile
 		varFile = args.varFile
 		taskName = args.taskName
+		rollbackFile = args.rollbackFile
+		rollbackName = args.rollbackName
+		taskName = args.taskName
 		onlyJS = args.onlyJS
 		onlyPayload = args.onlyPayload
 		debug = args.verbose
@@ -53,8 +60,8 @@ if __name__ == "__main__":
 		parser.print_help ()
 		sys.exit (0)
 
-	# Try to open both files
-	# Load information from YAML file
+	# Try to open files
+	# Load payload from JSON file
 	try:
 		with open (dataFile, 'r') as payload:
 			data = payload.read ()
@@ -70,25 +77,49 @@ if __name__ == "__main__":
 	except Exception as e:
 		print "ERROR: Could not find variables file %s or file not YAML-conform" % varFile
 		sys.exit (0)
+	# Load rollback payload from JSON file
+	if len (rollbackFile) > 0:
+		try:
+			with open (rollbackFile, 'r') as payload:
+				rollbackData = payload.read ()
+		except Exception as e:
+			print "ERROR: Could not find rollback data file %s" % rollbackFile
+			sys.exit (0)
+
 	# At this point we have everything we need
 
-	# Step 1: replace the variables in the file with the right syntax "{{variable_name}}"
+	# Step 1: replace the variables in the file(s) with the right syntax "{{variable_name}}"
+	# First for the data file
 	for old in varDict.keys():
 		if debug:
 			print "Replacing string occurrence %s" % old
 		new = "{{" + varDict[old] + "}}"
 		data = data.replace (old, new)
+		if len (rollbackFile) > 0:
+			rollbackData = rollbackData.replace (old, new)	
 	if onlyPayload:
 		print data
+		print rollbackData
 		sys.exit (0)
 	
 	# Step 2: generate JavaScript code out the of the parametrised JSON/XML code
 	jsVarList = request.generateJSVarList (data)
-	jscode = request.generateJS (data, jsVarList)
+	# Generate JavaScript
+	if len (rollbackFile) > 0:
+		jscode = request.generateJS (taskName, data, jsVarList, rollbackName)
+		rollbackJScode = request.generateJS (rollbackName, rollbackData, jsVarList, "")
+	else:
+		jscode = request.generateJS (taskName, data, jsVarList, "")
+		rollbackJScode = ""
 	if onlyJS:
-		print jscode				
+		print jscode		
+		print rollbackJScode				
 		sys.exit (0)
 
 	# Step 3: generate the WFDX file out of the JS code
-	wfdx = request.generateWFDX (jscode, taskName, jsVarList)
+	wfdx = '<?xml version="1.0" ?><OrchExportInfo><Time>Tue Jan 05 12:31:03 UTC 2016</Time><User></User><Comments></Comments>'
+	wfdx += request.generateWFDX (jscode, taskName, jsVarList)
+	if len (rollbackName) > 0:
+		wfdx += request.generateWFDX (rollbackJScode, rollbackName, jsVarList)
+	wfdx += "<version>3.0</version></OrchExportInfo>"
 	print wfdx

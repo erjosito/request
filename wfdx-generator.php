@@ -33,8 +33,10 @@ $variables="";
 $name="";
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
   $json = $_POST["JSON"];
+  $rollbackjson = $_POST["rollbackJSON"];
   $variables = $_POST["variables"];
   $taskName = $_POST["taskName"];
+  $rollbackName = $_POST["rollbackName"];
   $name = $_POST["fileName"];
 
   // Create a directory for this task
@@ -44,14 +46,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   exec ("cd " . $workdir);
 
   // Dump the text areas into files
-  $jsonfile = $workdir . "/" . $name . ".orig.json";
-  file_put_contents ($jsonfile, $json);
-  $varsfile = $workdir . "/" . $name . ".yml";
+  $commitJsonFile = $workdir . "/" . $name . ".comm.json";
+  file_put_contents ($commitJsonFile, $json);
+  $rollbackJsonFile = $workdir . "/" . $name . ".roll.json";
+  file_put_contents ($rollbackJsonFile, $rollbackjson);
+  $varsFile = $workdir . "/" . $name . ".yml";
   file_put_contents ($varsfile, $variables);
 
   // Do the magic (actually, invoke a Python script that does the magic)
-  $outputfile = $workdir . "/" . $name . ".wfdx";
-  exec ("/usr/bin/python /root/request/genWFDX.py  " . $jsonfile . " " . $varsfile . " " . $taskName . " >" . $outputfile);
+  $outputFile = $workdir . "/" . $name . ".wfdx";
+  if (strlen ($rollbackName) > 0) {
+      exec ("/usr/bin/python /root/request/genWFDX.py  -d " . $commitJsonFile . " -v " . $varsFile . " -n " . $taskName . " -r " . $rollbackJsonFile . " -q " . $rollbackName . " >" . $outputFile);
+  } else {
+      exec ("/usr/bin/python /root/request/genWFDX.py  -d " . $commitJsonFile . " -v " . $varsFile . " -n " . $taskName . " >" . $outputFile);
+  }
 }
 ?>
 
@@ -68,12 +76,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   <p>Please paste here some XML or JSON code to be sent to APIC over a POST REST call:<br>
   <textarea name='JSON' id='JSON' cols='80' rows='10'><?php echo $json; ?></textarea><br>
   <br>
+  <p><b>Optionally</b> paste here some XML or JSON code for rollback:<br>
+  <textarea name='rollbackJSON' id='rollbackJSON' cols='80' rows='10'><?php echo $rollbackjson; ?></textarea><br>
+  <br>
   <p>Please write here the strings to be translated to variables, for example, "myTenantName: tenantName" (one variable per line):<br>
   <textarea name='variables' id='variables' cols='80' rows='5'><?php echo $variables; ?></textarea><br>
   <br>
-  Enter here a descriptive name for the custom task (like new_Tenant):
-  <br>
+  Enter here a descriptive name for the custom task (like createTenant):
   <input type='text' name='taskName' id='taskName' value='<?php echo $taskName; ?>'><br>
+  <br>
+  If you entered rollback code, enter here a descriptive name for the rollback task (like deleteTenant):
+  <input type='text' name='rollbackName' id='rollbackName' value='<?php echo $rollbackName; ?>'><br>
   <br>
   And lastly, a name for the generated file (it is recommended to prefix it with your CEC user ID):
   <input type='text' name='fileName' id='fileName' value='<?php echo $name; ?>'><br>
@@ -81,6 +94,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   <input type="submit" value="Submit">
 </form>
 
+<br>
 <br>
 <br>
 <h3>Examples of the required inputs above</h3>
@@ -109,6 +123,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 </font>
 </p>
+<br>
+
+<p>Optional rollback JSON code:</p>
+<p>
+<font face='courier'>
+{"fvTenant":
+  {"attributes":
+    {"dn":"uni/tn-HelloWorld",
+     "status":"deleted"
+    },"children":[]
+  }
+}</font>
+</p>
+<br>
 
 <p>Variables:</p>
 <p><font face='courier'>

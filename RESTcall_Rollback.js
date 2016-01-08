@@ -11,42 +11,70 @@ importPackage(org.apache.commons.httpclient.auth);
  
 ///////////////////////////////////////////////////////////////////////////////
 //
-//                        {{name}}
+//		Author: 	Russ Whitear (rwhitear@cisco.com)
+//				
+//		Modified:	16.07.14 - Added rollback functionality.
 //
-//        Generated automatically with request.py
-//                
 ///////////////////////////////////////////////////////////////////////////////
 
 
 //
 // Workflow Inputs.
-// syntax:  var username = input.username;
-{{Variables}}
+// 
+var username = input.apicLogin;
+var password = input.apicPassword;
+var apicIP = input.apicIP;
+
+var tenantName = input.tenantName;
 
 //
 // Static Bodytext Data.
-var loginData  = "<aaaUser name=\"" + username + "\" pwd=\"" + password + "\" />";
-var logoutData = "<aaaUser name=\"" + username + "\"  />";
+//
+var loginData = "<aaaUser name=\"" +username+ "\" pwd=\"" +password+ "\" />";
+var logoutData = "<aaaUser name=\"" +username+ "\"  />";
 
 //
 // Static URIs.
+//
 var loginUri      = "/api/mo/aaaLogin.xml";
 var logoutUri      = "/api/aaaLogout.xml";
 
 //
 // Primary Task URI.
-var primaryTaskUri = "{{url}}";
+//
+var primaryTaskUri = "/api/node/mo/uni/tn-" +tenantName+ ".xml";
  
 //
 // Primary Task Bodytext Data.
 // 
 // This is the XML bodytext required by APIC in order to progress. Any variable entries
 // need to be substituted with either static or externally entered values.
-var primaryTaskData = "{{data}}";
+//
+var primaryTaskData = " \
+<fvTenant name='" +tenantName+ "' status='created,modified'></fvTenant> \
+";
 
+//
+// Rollback function.
+//
+function registerUndoTask(apicIP,username,password,tenantName) {
+    // register undo task    
+    var undoHandler = "custom_UNDO_apic_tenant_bd_and_private_network";
+    var undoContext = ctxt.createInnerTaskContext(undoHandler);
+    var undoConfig = undoContext.getConfigObject();
+	undoConfig.tenantName = tenantName;
+	undoConfig.apicIP = apicIP;
+	undoConfig.username = username;
+	undoConfig.password = password;
 
-// Rollback function
-{{rollbackFunction}}
+    ctxt.getChangeTracker().undoableResourceModified("Rollback tenant ", 
+                tenantName,
+                "rollback",
+                "Rollback tenant "+tenantName,
+                 undoHandler,
+                 undoConfig);
+}
+
 
 //
 // Main code start.
@@ -113,8 +141,8 @@ statuscode = httpMethod.getStatusCode();
 
 if (statuscode != 200)
 {   
-    logger.addError("Failed logout from APIC. HTTP response code: " + statuscode);
-    logger.addError("Response = " + httpMethod.getResponseBodyAsString());
+    logger.addError("Failed logout from APIC. HTTP response code: "+statuscode);
+    logger.addError("Response = "+httpMethod.getResponseBodyAsString());
  
     httpMethod.releaseConnection();
  
@@ -127,8 +155,16 @@ if (statuscode != 200)
     httpMethod.releaseConnection();
 }
 
-// Output variables
-{{outputVariables}}
+//
+// Set Output Variables.
+//
+output.TENANT_NAME = tenantName;
 
+
+//
 // Register Undo Task.
-{{rollbackRegister}}
+//
+registerUndoTask(apicIP,username,password,tenantName);
+
+ 
+ 

@@ -102,60 +102,93 @@ def chkConfig (config):
 	except Exception as e:
 		# Probably no variables section in the file
 		print "ERROR: No variables defined in the config file!"
-		variables = ""
+		variables = []
 		variablesDefined = False
 		pass
 	tests = config['tests']
+	try:
+		rollbackTests = config ['rollback']
+		tests += rollbackTests
+	except Exception as E:
+		# No rollback section defined
+		pass
+	errorsFound = 0
 	for t in tests:
 		type = t['type']
 		file = t['file']
-		# Get local variables
-		try:
-			localVariablesDefined = True
-			localVariables = t['variables']
-			# Merge local Variables with global Variables (if defined)
-			# mergeVariables already takes care of recursive variables
-			if variablesDefined:
-				localVariables = mergeVariables (variables, localVariables)
-			if debug:
-				print 'Local variables found, merged variable list: %s' % str (localVariables)
-		except Exception as e:
-			# Probably no variables section in this test
-			localVariablesDefined = False
-			localVariables = variables
-			pass
 
+		# Do something only if we are speaking of a JSON/XML test
 		if type=='json' or type=='xml':
+			if debug:
+				print "Checking test %s" % file
+			# Get local variables
+			try:
+				localVariablesDefined = True
+				localVariables = t['variables']
+				# Merge local Variables with global Variables (if defined)
+				# mergeVariables already takes care of recursive variables
+				if variablesDefined:
+					localVariables = mergeVariables (variables, localVariables)
+				if debug:
+					print 'Local variables found, merged variable list: %s' % str (localVariables)
+			except Exception as e:
+				# Probably no variables section in this test
+				localVariablesDefined = False
+				localVariables = variables
+				pass
+
+			# Get the URL (if any)
+			try:
+				url = t['url']
+				urlDefined = True
+			except Exception as e:
+				# Probably no URL defined
+				urlDefined = False
+				pass
+
+			# See that the file exists
 			try:
 				with open (file, 'r') as payload:
 					data = payload.read()
 			except Exception as e:
 				print "ERROR: Could not open file %s: %s" % (file, str(e))
-			# Find variables in the file
-			hits = re.findall ("\{\{[\w\s\.\-\_]+\}\}", data)
-			# Remove duplicates converting to a set and back to an array
-			hits = set (hits)
-			for hit in hits:
-				# Remove the "{{" and "}}"
-				hit = hit [2 : len (hit)-2]
-				if (variablesDefined or localVariablesDefined):
-					# Look for that var in the variables dictionary
-					keyFound = False
-					for var in localVariables:
-						for key in var:
-							if key == hit:
-								keyFound = True
-								if debug:
-									print "Variable %s found in config file" % key
-					if not keyFound:
-						print "ERROR: Variable %s (present in file %s) not found in the config file" % (hit, file)
-				else:
-					print "ERROR: Variable %s (present in file %s), although no variable defined in config file" % (hit, file)
+
+			# Analyze the file content and the URL for variables, and compare them to the variable list
+			errorsFound += checkVariables (data, localVariables)
+			if urlDefined:
+				errorsFound += checkVariables (url, localVariables)			
+	print "%s errors found" % errorsFound
+
+def checkVariables (data, variableList):
+	errorsFound = 0
+	# Find variables in the file
+	hits = re.findall ("\{\{[\w\s\.\-\_]+\}\}", data)
+	# Remove duplicates converting to a set and back to an array
+	hits = set (hits)
+	for hit in hits:
+		# Remove the "{{" and "}}"
+		hit = hit [2 : len (hit)-2]
+		if len(variableList) > 0:
+			# Look for that var in the variables dictionary
+			keyFound = False
+			for var in variableList:
+				for key in var:
+					if key == hit:
+						keyFound = True
+						if debug:
+							print "Variable %s found in config file" % key
+			if not keyFound:
+				print "ERROR: Variable %s not found in the config file" % hit
+				errorsFound += 1
+		else:
+			print "ERROR: Variable %s found, although no variable defined in config file" % hit
+			errorsFound += 1
+		return errorsFound
 
 # Returns a list with all variables to be defined in a JS file
 def generateJSVarList (data):
-	# Initialize
-	jsVarList = []
+	# Initialize (these 3 variables need to be there always
+	jsVarList = ["apicIP", "username", "password"]
 	# Find all "{{x}}" variables in the JSON file
 	hits = re.findall ("\{\{[\w\s\.\-\_]+\}\}", data)
 	# Remove duplicates converting to a set
@@ -164,16 +197,12 @@ def generateJSVarList (data):
 		# Remove the "{{" and "}}"
 		varName = hit [2 : len (hit)-2]
 		jsVarList.append (varName)
-	# Add IP, username and password to the list of variables
-	jsVarList.append ("username")
-	jsVarList.append ("password")
-	jsVarList.append ("apicIP")
 	# And return it
 	return jsVarList
 
 # Generates JavaScript code for an UCSD custom task
 # It requires the JSON code to be pushed, plus a list of variables to be defined in the script
-def generateJS (data, jsVarList):
+def generateJS (name, data, jsVarList, rollbackTaskName):
 	# Load the template for the JavaScript file, it needs to be stored in the same
 	#   directory as this script
 	jstemplate = os.path.join(os.path.dirname(__file__), 'RESTcall.js')
@@ -206,13 +235,85 @@ def generateJS (data, jsVarList):
 	#   3. Assign the URL variable
 	jscode = jscode.replace ("{{Variables}}", jsVars)
 	jscode = jscode.replace ("{{data}}", data)
+	jscode = jscode.replace ("{{name}}", name)
 	if type == 'xml':
 		url = '/api/node/mo/.xml'
 	else:
 		url = '/api/node/mo/.json'
 	jscode = jscode.replace ("{{url}}", url)
+	# Set output variables (NOT SUPPORTED YET)
+	# Format: output.TENANT_NAME = tenantName
+	jscode = jscode.replace ("{{outputVariables}}", "")
+	# Now we need to add code to register a rollback task (if one has been provided)
+	if len (rollbackTaskName) > 0:
+		rollbackFunction = generateRollbackFunction (rollbackTaskName, jsVarList)
+		rollbackRegister = generateRollbackRegister (jsVarList)
+	else:
+		rollbackFunction = ""
+		rollbackRegister = ""
+	jscode = jscode.replace ("{{rollbackRegister}}", rollbackRegister)
+	jscode = jscode.replace ("{{rollbackFunction}}", rollbackFunction)	
 	# We are done!
 	return jscode
+
+# Generate a rollback register statement for a UCS Director script
+def generateRollbackRegister (jsVars):
+	template = "registerUndoTask({{inputArgs}});"
+	args=""
+	for varName in jsVars:
+		if len(args) > 0:
+			args += ","
+		args += varName
+	template = template.replace ("{{inputArgs}}", args)
+	return template
+
+# Generate a JavaScript function that can be used in a UCS Director task to register
+#   a rollback task
+def generateRollbackFunction (name, jsVars):
+	fncTemplate = """function registerUndoTask({{inputArgs}}) {
+		// register undo task    
+		var undoHandler = "custom_{{name}}";
+		var undoContext = ctxt.createInnerTaskContext(undoHandler);
+		var undoConfig = undoContext.getConfigObject();
+{{undoVars}}
+		// SYNTAX: ChangeTracker.undoableResourceModified (input.assetType, input.assetId, input.assetLabel, input.description, undoTaskHandlerName, configObject)
+		ctxt.getChangeTracker().undoableResourceModified(
+					 {{resource}}, 
+					 {{resource}},
+					 {{resource}},
+					 {{resource}},
+					 undoHandler,
+					 undoConfig);
+		}"""
+	# Generate the function argument list
+	args=""
+	for varName in jsVars:
+		if len(args) > 0:
+			args += ","
+		args += varName
+	fncTemplate = fncTemplate.replace ("{{inputArgs}}", args)
+	# Replace the rollback function name
+	fncTemplate = fncTemplate.replace ("{{name}}", name)
+	# undoConfig variables
+	undoVars = ""
+	for varName in jsVars:
+		undoVars += "		undoConfig." + varName + " = " + varName + ";\n"
+	fncTemplate = fncTemplate.replace ("{{undoVars}}", undoVars)
+	# getChangeTracker: we use the task name for everything
+	# BTW, here its syntax: ChangeTracker.undoableResourceModified(input.assetType,
+	#    input.assetId, input.assetLabel, input.description, undoTaskHandlerName, configObject) ;
+	if len (jsVars) > 3:
+		# Option 1: use the 1st variable after IP, user and pwd, and assume it is meaningful
+		resource = jsVars [3]
+	else:
+		# Option 2: use just the name of the rollback task
+		resource = '"%s"' % name
+
+	fncTemplate = fncTemplate.replace ("{{resource}}", resource)
+	# We are done!
+	return fncTemplate
+
+
 
 # Generate the WFDX for an UCSD custom task
 # It requires a name to be given to the task, plus the list of input variables to be defined
@@ -224,12 +325,18 @@ def generateWFDX (jscode, taskName, jsVarList):
 
 	# Now generate JSON for the input variables
 	JSONvars = ""
-	JSONvarTemplate = '{"name":"{{Name}}","label":"{{Name}}","persist":true,"columnInfo":null,"type":"text","mapToType":"gen_text_input","mandatory":true,"rbid":"","size":"medium","help":"","annotation":"","group":"","validate":false,"formManagedTable":false,"addEntryForm":"","editEntryForm":"","deleteEntryForm":"","moveUpForm":"","moveDownForm":"","infoEntryForm":"","runActionForm":"","editabe":true,"hidden":false,"multiline":false,"maxLength":128,"lov":"","lovProvider":"","order":99999,"uploadDir":"","table":"","validator":"","regex":".*","regexLabel":".*","minValue":-9223372036854775808,"maxValue":9223372036854775807,"hideFieldName":"","hideFieldValue":"","hideFieldCondition":"EQ","htmlPopupTag":"","htmlPopupLabel":"","htmlPopupStyle":0,"htmlPopupText":"","view":"","values":[]}'
+	JSONvarTemplate = '{"name":"{{Name}}","label":"{{Name}}","persist":true,"columnInfo":null,"type":"{{type}}","mapToType":"gen_text_input","mandatory":true,"rbid":"","size":"medium","help":"","annotation":"","group":"","validate":false,"formManagedTable":false,"addEntryForm":"","editEntryForm":"","deleteEntryForm":"","moveUpForm":"","moveDownForm":"","infoEntryForm":"","runActionForm":"","editabe":true,"hidden":false,"multiline":false,"maxLength":128,"lov":"","lovProvider":"","order":99999,"uploadDir":"","table":"","validator":"","regex":".*","regexLabel":".*","minValue":-9223372036854775808,"maxValue":9223372036854775807,"hideFieldName":"","hideFieldValue":"","hideFieldCondition":"EQ","htmlPopupTag":"","htmlPopupLabel":"","htmlPopupStyle":0,"htmlPopupText":"","view":"","values":[]}'
 	# We had compiled a list of variables
 	for varName in jsVarList:
 		if len(JSONvars) > 0:
 			JSONvars += ","
-		JSONvars += JSONvarTemplate.replace ("{{Name}}", varName)
+		thisJSONvar = JSONvarTemplate.replace ("{{Name}}", varName)
+		# Normally all input fields are text, but for the password we want to change that
+		if varName == "password":
+			thisJSONvar = thisJSONvar.replace ("{{type}}", "password")
+		else:
+			thisJSONvar = thisJSONvar.replace ("{{type}}", "text")
+		JSONvars += thisJSONvar
 
 	JSONtask = JSONtask.replace ("{{InputVariables}}", JSONvars)
 
@@ -246,7 +353,7 @@ def generateWFDX (jscode, taskName, jsVarList):
 	JSONtask64 = base64.b64encode (JSONtask)
 
 	# And finally, wrap it up in XML
-	XMLtaskTemplate = '<?xml version="1.0" ?><OrchExportInfo><Time>Thu Feb 12 13:12:05 UTC 2015</Time><User></User><Comments></Comments><UnifiedFeatureAssetInfo><addiInfo></addiInfo><featureAssetEntry><data><![CDATA[{"taskName":"{{Name}}","taskLabel":"{{Name}}","isActive":true,"taskSummary":"","taskDescription":"","taskDetails":"{{taskDetails}}","taskData":"{{TaskData64}}"}]]></data></featureAssetEntry><type>CUSTOM_TASKS</type></UnifiedFeatureAssetInfo><version>3.0</version></OrchExportInfo>'
+	XMLtaskTemplate = '<UnifiedFeatureAssetInfo><addiInfo></addiInfo><featureAssetEntry><data><![CDATA[{"taskName":"{{Name}}","taskLabel":"{{Name}}","isActive":true,"taskSummary":"","taskDescription":"","taskDetails":"{{taskDetails}}","taskData":"{{TaskData64}}"}]]></data></featureAssetEntry><type>CUSTOM_TASKS</type></UnifiedFeatureAssetInfo>'
 	XMLtask = XMLtaskTemplate.replace ("{{TaskData64}}", JSONtask64)
 	XMLtask = XMLtask.replace ("{{Name}}", taskName)
 	# No task details supported as of this version
@@ -254,13 +361,30 @@ def generateWFDX (jscode, taskName, jsVarList):
 
 	# We are done
 	return XMLtask
-	
-# ******************************************************************
-# WARNING: multiple tests in one YAML config file not supported yet
-# ******************************************************************
+
+# To generate some code that can be leveraged in UCS Director: either JavaScript code that
+#   can be used in custom tasks, or a WFDX file containing custom tasks (with that JS
+#   code already embedded) that can be imported in UCSD	
 def generateUCSDCode (config, printJs, printWfdx):
 	# Browse the tests
 	tests = config['tests']
+	# Including the rollback section, if defined
+	try:
+		rollbackTests = config ['rollback']
+		rollbackDefined = True
+	except Exception as E:
+		rollbackDefined = False
+		pass
+	if rollbackDefined:
+		tests = tests + rollbackTests
+		rollbackDict = createRollbackDict (config)
+		if debug:
+			print "DEBUG: Rollback dictionary: %s" % str (rollbackDict)
+
+	# Add first part (sort of a header) of the WFDX file
+	wfdx = '<?xml version="1.0" ?><OrchExportInfo><Time>Tue Jan 05 12:31:03 UTC 2016</Time><User></User><Comments></Comments>'
+	
+	# Browse the tests, and add one section to the WFDX file per test
 	for t in tests:
 		type = t['type']
 		file = t['file']
@@ -274,28 +398,57 @@ def generateUCSDCode (config, printJs, printWfdx):
 				print "ERROR: Could not find file %s" % file
 				fileFound = False
 			if fileFound:			
+				# We will use the test filename as name for the custom task
+				taskName = getBareFileName (file)
 				# Generate the JS code
 				jsVarList = generateJSVarList (data)
-				jscode = generateJS (data, jsVarList)
+				# We need to register a rollback task if:
+				# 1. rollback is defined AND
+				# 2. this specific commit task is to be associated with a rollback task
+				if rollbackDefined:
+					if file in rollbackDict.keys():
+						rollbackTaskName = getBareFileName (rollbackDict[file])
+					else:
+						rollbackTaskName = ""
+				else:
+					rollbackTaskName = ""
+				jscode = generateJS (taskName, data, jsVarList, rollbackTaskName)
 				if printJs:
 					print jscode				
-				# Let's go for the custom task, using the test filename as name for the custom task
-				# First, derive a usable name out of the filename
-				if file[len(file)-4:len(file)] == "json":
-					taskName = file[0:len(file)-5]
-				elif file[len(file)-3:len(file)] == "xml":
-					taskName = file[0:len(file)-4]
-				# If filename contains a path, take only the filename
-				for i in range (0, len (taskName)):
-					if taskName[i] == "/":
-						newTaskName = taskName [i+1 : len(taskName)]
-				# Generate WFDX code
-				wfdx = generateWFDX (jscode, newTaskName, jsVarList)
-				if printWfdx:
-					print wfdx
-	
+				# Add task to WFDX code
+				wfdx += generateWFDX (jscode, taskName, jsVarList)
+	# Close the WFDX file (sort of a footer)
+	wfdx += "<version>3.0</version></OrchExportInfo>"
+	if printWfdx:
+		print wfdx			
 
-				
+# Returns the bare file name of a path, without the extension or the directories 
+def getBareFileName (file):
+	# First, remove the extension (it can be JSON or XML)
+	# There is a better way of removing ANY extension, something to do later
+	if file[len(file)-4:len(file)] == "json":
+		aux = file[0:len(file)-5]
+	elif file[len(file)-3:len(file)] == "xml":
+		aux = file[0:len(file)-4]
+	# If filename contains a path, take only the filename
+	for i in range (0, len (aux)):
+		if aux[i] == "/":
+			aux2 = aux [i+1 : len(aux)]
+	# We are done
+	return aux2
+
+
+# This function creates a dictionary with entries for all commit tasks that need a rollback task
+def createRollbackDict (config):
+	commitTests = config ['tests']
+	rollbackTests = config ['rollback']
+	dict = {}
+	for i in range (0, len (rollbackTests)):
+		dict [commitTests[i]['file']] = rollbackTests[i]['file']
+	return dict
+
+# Run in standard mode: assume a login to the fabric has been mode, send all tests
+#  (commit or rollback) to the fabric
 def runConfig (config, cookies):
 	# Variablie initialization
 	global status
@@ -312,7 +465,21 @@ def runConfig (config, cookies):
 		variablesDefined = False
 		variables = ""
 		pass
-	tests = config['tests']
+	
+	# Load the tests to run (depending whether the rollback option has been specified in the command line)
+	if rollback:
+		try:
+			tests = config['rollback']
+		except Exception as e:
+			print "Error: no rollback section defined in config file"
+			sys.exit (0)
+	else:
+		try:
+			tests = config['tests']
+		except Exception as e:
+			print "Error: no main section defined in config file"
+			sys.exit (0)
+	
 	for t in tests:
 		type = t['type']
 		file = t['file']
@@ -379,12 +546,22 @@ def runConfig (config, cookies):
 					# If any substitution variable has been specified, replace and show
 					if (variablesDefined or localVariablesDefined):
 						data = replaceVariables (localVariables, data)
-					# Post (always use the generic root URL?)
-					url = 'http://%s/api/node/mo/.xml' % config['host']
-					#url = 'http://%s/%s' % (config['host'],t['path'])
-					# Check the URL for variables too
-					#if (variablesDefined or localVariablesDefined):
-					#	url = replaceVariables (localVariables, url)
+					# Read URL (if no path defined, use a standard URL)
+					try:
+						path = t['path']
+						# Check if user forgot the leading "/"
+						if path[0] != "/":
+							path = "/" + path
+						# Append path to URL
+						url = 'http://%s%s' % (config['host'],path)
+						# Check the URL for variables too
+						if (variablesDefined or localVariablesDefined):
+							url = replaceVariables (localVariables, url)
+					except Exception as e:
+						# We probably found no 'path' attribute
+						url = 'http://%s/api/node/mo/.xml' % config['host']
+						pass
+					# Send POST
 					r = requests.post( url,
 									   cookies = cookies,
 									   data = data )
@@ -415,12 +592,22 @@ def runConfig (config, cookies):
 					# If any substitution variable has been specified, replace and show
 					if (variablesDefined or localVariablesDefined):
 						data = replaceVariables (localVariables, data)
-					# Post (always use the generic root URL?)
-					url = 'http://%s/api/node/mo/.json' % config['host']
-					#url = 'http://%s/%s' % (config['host'],t['path'])
-					# Check the URL for variables too
-					#if (variablesDefined or localVariablesDefined):
-					#	url = replaceVariables (localVariables, url)
+					# Read URL (if no path defined, use a standard URL)
+					try:
+						path = t['path']
+						# Check if user forgot the leading "/"
+						if path[0] != "/":
+							path = "/" + path
+						# Append path to URL
+						url = 'http://%s%s' % (config['host'],path)
+						# Check the URL for variables too
+						if (variablesDefined or localVariablesDefined):
+							url = replaceVariables (localVariables, url)
+					except Exception as e:
+						# We probably found no 'path' attribute
+						url = 'http://%s/api/node/mo/.json' % config['host']
+						pass
+					# Send POST
 					r = requests.post( url,
 									   cookies = cookies,
 									   data = data )
@@ -478,6 +665,8 @@ if __name__ == "__main__":
 						   help='the config file name where variables, URLs and configs are specified')
 		parser.add_argument('--testVariables', action="store_true",
 						   help='if requests.py should just verify that all variables have been specified in the config file')
+		parser.add_argument('--rollback', action="store_true",
+						   help='if the rollback section of the workflow should be executed, instead of the main section')
 		parser.add_argument('--verbose', action="store_true",
 						   help='if additional verbose output should be shown (aka debug)')
 		parser.add_argument('--ucsdjs', action="store_true",
@@ -490,6 +679,7 @@ if __name__ == "__main__":
 		debug = args.verbose
 		ucsdjs = args.ucsdjs
 		ucsdwfdx = args.ucsdwfdx
+		rollback = args.rollback
 	except Exception as e:
 		parser.print_help ()
 		sys.exit (0)
@@ -504,9 +694,10 @@ if __name__ == "__main__":
 		chkConfig (config)
 	# - or the real thing (login first, do the magic second)
 	elif (ucsdjs):
-		generateUCSCode (config, True, False)
+		generateUCSDCode (config, True, False)
 	elif (ucsdwfdx):
 		generateUCSDCode (config, False, True)
+	# Run the workflow normally
 	else:
 		status = 0
 		cookies = login (config)
