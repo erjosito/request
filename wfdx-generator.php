@@ -51,7 +51,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   $rollbackJsonFile = $workdir . "/" . $name . ".roll.json";
   file_put_contents ($rollbackJsonFile, $rollbackjson);
   $varsFile = $workdir . "/" . $name . ".yml";
-  file_put_contents ($varsfile, $variables);
+  file_put_contents ($varsFile, $variables);
 
   // Do the magic (actually, invoke a Python script that does the magic)
   $outputFile = $workdir . "/" . $name . ".wfdx";
