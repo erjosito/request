@@ -78,7 +78,7 @@ if __name__ == "__main__":
 		print "ERROR: Could not find variables file %s or file not YAML-conform" % varFile
 		sys.exit (0)
 	# Load rollback payload from JSON file
-	if len (rollbackFile) > 0:
+	if rollbackFile:
 		try:
 			with open (rollbackFile, 'r') as payload:
 				rollbackData = payload.read ()
@@ -95,7 +95,7 @@ if __name__ == "__main__":
 			print "Replacing string occurrence %s" % old
 		new = "{{" + varDict[old] + "}}"
 		data = data.replace (old, new)
-		if len (rollbackFile) > 0:
+		if rollbackFile:
 			rollbackData = rollbackData.replace (old, new)	
 	if onlyPayload:
 		print data
@@ -105,7 +105,7 @@ if __name__ == "__main__":
 	# Step 2: generate JavaScript code out the of the parametrised JSON/XML code
 	jsVarList = request.generateJSVarList (data)
 	# Generate JavaScript
-	if len (rollbackFile) > 0:
+	if rollbackFile:
 		jscode = request.generateJS (taskName, data, jsVarList, rollbackName)
 		rollbackJScode = request.generateJS (rollbackName, rollbackData, jsVarList, "")
 	else:
@@ -119,7 +119,7 @@ if __name__ == "__main__":
 	# Step 3: generate the WFDX file out of the JS code
 	wfdx = '<?xml version="1.0" ?><OrchExportInfo><Time>Tue Jan 05 12:31:03 UTC 2016</Time><User></User><Comments></Comments>'
 	wfdx += request.generateWFDX (jscode, taskName, jsVarList)
-	if len (rollbackName) > 0:
+	if rollbackName:
 		wfdx += request.generateWFDX (rollbackJScode, rollbackName, jsVarList)
 	wfdx += "<version>3.0</version></OrchExportInfo>"
 	print wfdx
