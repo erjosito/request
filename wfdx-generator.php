@@ -79,7 +79,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   <p><b>Optionally</b> paste here some XML or JSON code for rollback:<br>
   <textarea name='rollbackJSON' id='rollbackJSON' cols='80' rows='10'><?php echo $rollbackjson; ?></textarea><br>
   <br>
-  <p>Please write here the strings to be translated to variables, for example, "myTenantName: tenantName" (one variable per line):<br>
+  <p>Please write here the strings to be translated to variables, for example, "myTenantName: tenantName" (one variable per line). Please use only alphanumeric symbols for the variable names, UCSD does not like fancy things like hyphens:<br>
   <textarea name='variables' id='variables' cols='80' rows='5'><?php echo $variables; ?></textarea><br>
   <br>
   Enter here a descriptive name for the custom task (like createTenant):
