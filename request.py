@@ -212,11 +212,11 @@ def generateJS (name, data, jsVarList, rollbackTaskName):
 	except Exception as e:
 		print "ERROR: Could not find JavaScript template %s" % jstemplate
 		sys.exit (1)
-	# First we need to escape the quote signs and escape the line breaks
+	# First we need to escape the quote signs and escape the CR characters
 	# Help: chr(34)=", chr(39)=', chr(92)=\
 	data = data.replace (chr(34), chr(92) + chr(34))
 	data = data.replace (chr(39), chr(92) + chr(34))
-	data = data.replace ("\n", " \\\n")
+	data = data.replace ("\r", " \\\r")
 	# Instead of replacing the variables with its real value, we need to
 	#  change them to JS format. For example, where it said tn-{{tenantName}}
 	#  we need to write tn-"+tenantName+"

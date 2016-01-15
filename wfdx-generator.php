@@ -27,6 +27,11 @@ You just need to capture some ACI REST calls (for example with the API Inspector
 the text boxes below.
 </p>
 
+<p>
+You can find the code for this conversion in <a href='https://github.com/erjosito/request'>Github</a>. 
+For help, comments or suggestions about this page or the underlying code please contact <a href='mailto:josemor@cisco.com'>josemor@cisco.com</a>.
+</p>
+
 <?php
 $json = "";
 $variables="";
@@ -67,7 +72,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (file_exists ($outputFile)) {
         $target = 'wfdx/' . $name . '/' . $name . '.wfdx';
-        echo '<p><b>This is the link to your generated file: <a href="' . $target . '">wfdx file</a></b>. Right-click on the link, save the WFDX file in your computer, and import it into UCS Director.<p>';
+        echo '<p><font color='red'><b>This is the link to your generated file: <a href="' . $target . '">wfdx file</a></b>. Right-click on the link, save the WFDX file in your computer, and import it into UCS Director.</font><p>';
     }
 }
 ?>
