@@ -108,6 +108,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <option value="https">HTTPS</option>
   </select>
   <br>
+  <br>
   And lastly, a name for the generated file (it is recommended to prefix it with your CEC user ID):
   <input type='text' name='fileName' id='fileName' value='<?php echo $name; ?>'><br>
   <br>
