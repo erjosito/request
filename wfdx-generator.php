@@ -62,13 +62,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   // Do the magic (actually, invoke a Python script that does the magic)
   $outputFile = $workdir . "/" . $name . ".wfdx";
   if (strlen ($rollbackName) > 0) {
-      if (protocol == "http") {
+      if ($protocol == "http") {
           exec ("/usr/bin/python /root/request/genWFDX.py  -d " . $commitJsonFile . " -v " . $varsFile . " -n " . $taskName . " -r " . $rollbackJsonFile . " -q " . $rollbackName . " >" . $outputFile);
       } else {
           exec ("/usr/bin/python /root/request/genWFDX.py  -d " . $commitJsonFile . " -v " . $varsFile . " -n " . $taskName . " -r " . $rollbackJsonFile . " -q " . $rollbackName . " --https >" . $outputFile);
       }
   } else {
-      if (protocol == "http") {
+      if ($protocol == "http") {
           exec ("/usr/bin/python /root/request/genWFDX.py  -d " . $commitJsonFile . " -v " . $varsFile . " -n " . $taskName . " >" . $outputFile);
       } else {
           exec ("/usr/bin/python /root/request/genWFDX.py  -d " . $commitJsonFile . " -v " . $varsFile . " -n " . $taskName . " --https >" . $outputFile);
