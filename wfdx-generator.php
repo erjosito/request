@@ -81,7 +81,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (file_exists ($outputFile)) {
         $target = 'wfdx/' . $name . '/' . $name . '.wfdx';
-        echo '<p><font color='red'><b>This is the link to your generated file: <a href="' . $target . '">wfdx file</a></b>. Right-click on the link, save the WFDX file in your computer, and import it into UCS Director.</font><p>';
+        echo '<p><font color="red"><b>This is the link to your generated file: <a href="' . $target . '">wfdx file</a></b>. Right-click on the link, save the WFDX file in your computer, and import it into UCS Director.</font><p>';
     }
 }
 ?>
