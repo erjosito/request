@@ -44,6 +44,8 @@ if __name__ == "__main__":
 						   help='specify if you only want to generate JavaScript code, instead of the whole WFDX file')
 		parser.add_argument('--onlyPayload', action="store_true",
 						   help='specify if you only want to generate parametrised JSON/XML code, instead of the whole WFDX file')
+		parser.add_argument('--https', action="store_true",
+						   help='specify if you want to use HTTPS to send the REST API calls')
 		parser.add_argument('--verbose', action="store_true",
 						   help='if additional verbose output should be shown (aka debug)')
 		args = parser.parse_args()
@@ -55,6 +57,7 @@ if __name__ == "__main__":
 		taskName = args.taskName
 		onlyJS = args.onlyJS
 		onlyPayload = args.onlyPayload
+		https = args.https
 		debug = args.verbose
 	except Exception as e:
 		parser.print_help ()
@@ -103,13 +106,17 @@ if __name__ == "__main__":
 		sys.exit (0)
 	
 	# Step 2: generate JavaScript code out the of the parametrised JSON/XML code
+	if https:
+		protocol = "https"
+	else:
+		protocol = "http"
 	jsVarList = request.generateJSVarList (data)
 	# Generate JavaScript
 	if rollbackFile:
-		jscode = request.generateJS (taskName, data, jsVarList, rollbackName)
-		rollbackJScode = request.generateJS (rollbackName, rollbackData, jsVarList, "")
+		jscode = request.generateJS (taskName, data, jsVarList, rollbackName, protocol)
+		rollbackJScode = request.generateJS (rollbackName, rollbackData, jsVarList, "", protocol)
 	else:
-		jscode = request.generateJS (taskName, data, jsVarList, "")
+		jscode = request.generateJS (taskName, data, jsVarList, "", protocol)
 		rollbackJScode = ""
 	if onlyJS:
 		print jscode		

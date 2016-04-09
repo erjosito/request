@@ -203,7 +203,7 @@ def generateJSVarList (data):
 
 # Generates JavaScript code for an UCSD custom task
 # It requires the JSON code to be pushed, plus a list of variables to be defined in the script
-def generateJS (name, data, jsVarList, rollbackTaskName):
+def generateJS (name, data, jsVarList, rollbackTaskName, protocol):
 	# Load the template for the JavaScript file, it needs to be stored in the same
 	#   directory as this script
 	jstemplate = os.path.join(os.path.dirname(__file__), 'RESTcall.js')
@@ -246,7 +246,7 @@ def generateJS (name, data, jsVarList, rollbackTaskName):
 	jscode = jscode.replace ("{{outputVariables}}", "")
 
 	# Set HTTP / HTTPS
-	if useHttps:
+	if protocol == "https":
 		jscode = jscode.replace ("{{protocol}}", "https")
 	else:
 		jscode = jscode.replace ("{{protocol}}", "http")
@@ -419,7 +419,10 @@ def generateUCSDCode (config, printJs, printWfdx):
 						rollbackTaskName = ""
 				else:
 					rollbackTaskName = ""
-				jscode = generateJS (taskName, data, jsVarList, rollbackTaskName)
+				if useHttps:
+					jscode = generateJS (taskName, data, jsVarList, rollbackTaskName, "https")
+				else:
+					jscode = generateJS (taskName, data, jsVarList, rollbackTaskName, "http")
 				if printJs:
 					print jscode				
 				# Add task to WFDX code

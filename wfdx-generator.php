@@ -43,6 +43,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   $taskName = $_POST["taskName"];
   $rollbackName = $_POST["rollbackName"];
   $name = $_POST["fileName"];
+  $protocol = $_POST["protocol"];
 
   // Create a directory for this task
   $rootdir = "/var/www/html/wfdx";
@@ -61,9 +62,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   // Do the magic (actually, invoke a Python script that does the magic)
   $outputFile = $workdir . "/" . $name . ".wfdx";
   if (strlen ($rollbackName) > 0) {
-      exec ("/usr/bin/python /root/request/genWFDX.py  -d " . $commitJsonFile . " -v " . $varsFile . " -n " . $taskName . " -r " . $rollbackJsonFile . " -q " . $rollbackName . " >" . $outputFile);
+      if (protocol == "http") {
+          exec ("/usr/bin/python /root/request/genWFDX.py  -d " . $commitJsonFile . " -v " . $varsFile . " -n " . $taskName . " -r " . $rollbackJsonFile . " -q " . $rollbackName . " >" . $outputFile);
+      } else {
+          exec ("/usr/bin/python /root/request/genWFDX.py  -d " . $commitJsonFile . " -v " . $varsFile . " -n " . $taskName . " -r " . $rollbackJsonFile . " -q " . $rollbackName . " --https >" . $outputFile);
+      }
   } else {
-      exec ("/usr/bin/python /root/request/genWFDX.py  -d " . $commitJsonFile . " -v " . $varsFile . " -n " . $taskName . " >" . $outputFile);
+      if (protocol == "http") {
+          exec ("/usr/bin/python /root/request/genWFDX.py  -d " . $commitJsonFile . " -v " . $varsFile . " -n " . $taskName . " >" . $outputFile);
+      } else {
+          exec ("/usr/bin/python /root/request/genWFDX.py  -d " . $commitJsonFile . " -v " . $varsFile . " -n " . $taskName . " --https >" . $outputFile);
+      }
   }
 }
 ?>
@@ -92,6 +101,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   <br>
   If you entered rollback code, enter here a descriptive name for the rollback task (like deleteTenant):
   <input type='text' name='rollbackName' id='rollbackName' value='<?php echo $rollbackName; ?>'><br>
+  <br>
+  Specify whether you want to use HTTP or HTTPS to send the REST API calls
+  <select name="protocol">
+    <option value="http">HTTP</option>
+    <option value="https">HTTPS</option>
   <br>
   And lastly, a name for the generated file (it is recommended to prefix it with your CEC user ID):
   <input type='text' name='fileName' id='fileName' value='<?php echo $name; ?>'><br>
@@ -147,6 +161,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <p><font face='courier'>
 HelloWorld: tenantName
 </font></p>
+
+<br>
+<br>
+<p>For feedback on this page contact <a href="mailto:josemor@cisco.com">Jose Moreno</a>
 
 </td><td width='20%'></td></tr></table>
 </center></font>
