@@ -1,0 +1,1 @@
+{"fvTenant":{"attributes":{"dn":"uni/tn-{{TenantName}}","status":"modified"},"children":[{"vzBrCP":{"attributes":{"dn":"uni/tn-{{TenantName}}/brc-{{ContractName}}","status":"deleted"},"children":[]}}]}}

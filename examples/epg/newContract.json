@@ -1,0 +1,43 @@
+{
+  "imdata": [
+    {
+      "vzBrCP": {
+        "attributes": {
+          "descr": "", 
+          "dn": "uni/tn-{{TenantName}}/brc-{{ContractName}}", 
+          "name": "{{ContractName}}", 
+          "ownerKey": "", 
+          "ownerTag": "", 
+          "prio": "unspecified", 
+          "scope": "context", 
+          "targetDscp": "unspecified"
+        }, 
+        "children": [
+          {
+            "vzSubj": {
+              "attributes": {
+                "consMatchT": "AtleastOne", 
+                "descr": "", 
+                "name": "{{ContractName}}", 
+                "prio": "unspecified", 
+                "provMatchT": "AtleastOne", 
+                "revFltPorts": "yes", 
+                "targetDscp": "unspecified"
+              }, 
+              "children": [
+                {
+                  "vzRsSubjFiltAtt": {
+                    "attributes": {
+                      "tnVzFilterName": "default"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ], 
+  "totalCount": "1"
+}

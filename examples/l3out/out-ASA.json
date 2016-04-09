@@ -1,0 +1,255 @@
+{
+  "imdata": [
+    {
+      "l3extOut": {
+        "attributes": {
+          "descr": "", 
+          "dn": "uni/tn-LeisureMech2/out-ASAin", 
+          "enforceRtctrl": "export,import", 
+          "name": "ASAin", 
+          "ownerKey": "", 
+          "ownerTag": "", 
+          "targetDscp": "unspecified"
+        }, 
+        "children": [
+          {
+            "l3extRsEctx": {
+              "attributes": {
+                "tnFvCtxName": "default"
+              }
+            }
+          }, 
+          {
+            "l3extLNodeP": {
+              "attributes": {
+                "configIssues": "", 
+                "descr": "", 
+                "name": "ESX-leaves", 
+                "ownerKey": "", 
+                "ownerTag": "", 
+                "tag": "yellow-green", 
+                "targetDscp": "unspecified"
+              }, 
+              "children": [
+                {
+                  "l3extRsNodeL3OutAtt": {
+                    "attributes": {
+                      "rtrId": "192.168.3.1", 
+                      "rtrIdLoopBack": "yes", 
+                      "tDn": "topology/pod-1/node-201"
+                    }
+                  }
+                }, 
+                {
+                  "l3extRsNodeL3OutAtt": {
+                    "attributes": {
+                      "rtrId": "192.168.3.2", 
+                      "rtrIdLoopBack": "yes", 
+                      "tDn": "topology/pod-1/node-202"
+                    }
+                  }
+                }, 
+                {
+                  "l3extLIfP": {
+                    "attributes": {
+                      "descr": "", 
+                      "name": "ESX-ports", 
+                      "ownerKey": "", 
+                      "ownerTag": "", 
+                      "tag": "yellow-green"
+                    }, 
+                    "children": [
+                      {
+                        "ospfIfP": {
+                          "attributes": {
+                            "authKeyId": "1", 
+                            "authType": "none", 
+                            "descr": "", 
+                            "name": ""
+                          }, 
+                          "children": [
+                            {
+                              "ospfRsIfPol": {
+                                "attributes": {
+                                  "tnOspfIfPolName": ""
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }, 
+                      {
+                        "l3extRsNdIfPol": {
+                          "attributes": {
+                            "tnNdIfPolName": ""
+                          }
+                        }
+                      }, 
+                      {
+                        "l3extRsIngressQosDppPol": {
+                          "attributes": {
+                            "tnQosDppPolName": ""
+                          }
+                        }
+                      }, 
+                      {
+                        "l3extRsEgressQosDppPol": {
+                          "attributes": {
+                            "tnQosDppPolName": ""
+                          }
+                        }
+                      }, 
+                      {
+                        "l3extRsPathL3OutAtt": {
+                          "attributes": {
+                            "addr": "0.0.0.0", 
+                            "descr": "", 
+                            "encap": "vlan-1194", 
+                            "encapScope": "local", 
+                            "ifInstT": "ext-svi", 
+                            "llAddr": "::", 
+                            "mac": "00:22:BD:F8:19:FF", 
+                            "mode": "regular", 
+                            "mtu": "1500", 
+                            "tDn": "topology/pod-1/protpaths-201-202/pathep-[UCS-FI-A]", 
+                            "targetDscp": "unspecified"
+                          }, 
+                          "children": [
+                            {
+                              "l3extMember": {
+                                "attributes": {
+                                  "addr": "192.168.3.74/29", 
+                                  "descr": "", 
+                                  "llAddr": "::", 
+                                  "name": "", 
+                                  "side": "B"
+                                }
+                              }
+                            }, 
+                            {
+                              "l3extMember": {
+                                "attributes": {
+                                  "addr": "192.168.3.73/29", 
+                                  "descr": "", 
+                                  "llAddr": "::", 
+                                  "name": "", 
+                                  "side": "A"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }, 
+                      {
+                        "l3extRsPathL3OutAtt": {
+                          "attributes": {
+                            "addr": "0.0.0.0", 
+                            "descr": "", 
+                            "encap": "vlan-1195	", 
+                            "encapScope": "local", 
+                            "ifInstT": "ext-svi", 
+                            "llAddr": "::", 
+                            "mac": "00:22:BD:F8:19:FF", 
+                            "mode": "regular", 
+                            "mtu": "1500", 
+                            "tDn": "topology/pod-1/protpaths-201-202/pathep-[UCS-FI-B]", 
+                            "targetDscp": "unspecified"
+                          }, 
+                          "children": [
+                            {
+                              "l3extMember": {
+                                "attributes": {
+                                  "addr": "192.168.3.77/29", 
+                                  "descr": "", 
+                                  "llAddr": "::", 
+                                  "name": "", 
+                                  "side": "B"
+                                }
+                              }
+                            }, 
+                            {
+                              "l3extMember": {
+                                "attributes": {
+                                  "addr": "192.168.3.78/29", 
+                                  "descr": "", 
+                                  "llAddr": "::", 
+                                  "name": "", 
+                                  "side": "A"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }, 
+          {
+            "l3extRsL3DomAtt": {
+              "attributes": {
+                "tDn": "uni/l3dom-common-L3D"
+              }
+            }
+          }, 
+          {
+            "l3extInstP": {
+              "attributes": {
+                "descr": "", 
+                "matchT": "AtleastOne", 
+                "name": "ASAin", 
+                "prio": "unspecified", 
+                "targetDscp": "unspecified"
+              }, 
+              "children": [
+                {
+                  "l3extSubnet": {
+                    "attributes": {
+                      "aggregate": "", 
+                      "descr": "", 
+                      "ip": "192.168.0.65/32", 
+                      "name": "", 
+                      "scope": "import-security"
+                    }
+                  }
+                }, 
+                {
+                  "l3extSubnet": {
+                    "attributes": {
+                      "aggregate": "", 
+                      "descr": "", 
+                      "ip": "0.0.0.0/0", 
+                      "name": "", 
+                      "scope": "import-security"
+                    }
+                  }
+                }, 
+                {
+                  "fvRsCustQosPol": {
+                    "attributes": {
+                      "tnQosCustomPolName": ""
+                    }
+                  }
+                }
+              ]
+            }
+          }, 
+          {
+            "ospfExtP": {
+              "attributes": {
+                "areaCost": "1", 
+                "areaCtrl": "redistribute,summary", 
+                "areaId": "0.0.0.1", 
+                "areaType": "regular", 
+                "descr": ""
+              }
+            }
+          }
+        ]
+      }
+    }
+  ], 
+  "totalCount": "1"
+}

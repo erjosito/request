@@ -4,10 +4,14 @@ importPackage(java.io);
 importPackage(com.cloupia.lib.util);
 importPackage(com.cloupia.model.cIM);
 importPackage(com.cloupia.service.cIM.inframgr);
+importPackage(com.cloupia.lib.cIaaS.vcd.api);
 importPackage(org.apache.commons.httpclient);
 importPackage(org.apache.commons.httpclient.cookie);
 importPackage(org.apache.commons.httpclient.methods);
 importPackage(org.apache.commons.httpclient.auth);
+importPackage(org.apache.commons.httpclient.protocol);
+importClass(org.apache.commons.httpclient.protocol.SecureProtocolSocketFactory);
+
  
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -21,6 +25,12 @@ importPackage(org.apache.commons.httpclient.auth);
 //
 // Workflow Inputs.
 // syntax:  var username = input.username;
+var protocol = "{{protocol}}";
+if (protocol == "https") {
+	var TCPport = 443;
+} else {
+	var TCPport = 80;
+}
 {{Variables}}
 
 //
@@ -54,7 +64,15 @@ var primaryTaskData = "{{data}}";
 
 // Create an HTTP connection to the APIC.
 var httpClient = new HttpClient();
-httpClient.getHostConfiguration().setHost(apicIP, 80, "http");
+
+// Custom SSL to allow for self-signed certs
+if (protocol == "https" ) {   
+	httpClient = CustomEasySSLSocketFactory.getIgnoreSSLClient(apicIP, TCPport);
+} else {
+	httpClient.getHostConfiguration().setHost(apicIP, TCPport, protocol);
+}
+
+// Cookie policy to default
 httpClient.getParams().setCookiePolicy("default");
 
 // Login to APIC.

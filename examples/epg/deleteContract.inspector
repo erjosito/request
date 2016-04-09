@@ -1,0 +1,4 @@
+method: POST
+url: http://muc-apic/api/node/mo/uni/tn-common.json
+payload{"fvTenant":{"attributes":{"dn":"uni/tn-common","status":"modified"},"children":[{"vzBrCP":{"attributes":{"dn":"uni/tn-common/brc-VLAN3","status":"deleted"},"children":[]}}]}}
+

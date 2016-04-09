@@ -1,0 +1,2 @@
+url: http://muc-apic/api/node/mo/uni/tn-common/ap-default/epg-VLAN3.json
+payload{"fvRsProv":{"attributes":{"tnVzBrCPName":"VLAN3","status":"created,modified"},"children":[]}}

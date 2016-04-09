@@ -1,0 +1,34 @@
+{
+  "imdata": [
+    {
+      "fvAEPg": {
+        "attributes": {
+          "descr": "", 
+          "dn": "uni/tn-{{TenantName}}/ap-{{ANP}}/epg-{{EPG}}", 
+          "isAttrBasedEPg": "no", 
+          "matchT": "AtleastOne", 
+          "name": "{{EPG}}", 
+          "pcEnfPref": "unenforced", 
+          "prio": "unspecified"
+        }, 
+        "children": [
+          {
+            "fvRsCustQosPol": {
+              "attributes": {
+                "tnQosCustomPolName": ""
+              }
+            }
+          }, 
+          {
+            "fvRsBd": {
+              "attributes": {
+                "tnFvBDName": "default"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ], 
+  "totalCount": "1"
+}

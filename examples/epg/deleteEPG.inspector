@@ -1,0 +1,4 @@
+method: POST
+url: http://muc-apic/api/node/mo/uni/tn-common/ap-default.json
+payload{"fvAp":{"attributes":{"dn":"uni/tn-common/ap-default","status":"modified"},"children":[{"fvAEPg":{"attributes":{"dn":"uni/tn-common/ap-default/epg-VLAN3","status":"deleted"},"children":[]}}]}}
+

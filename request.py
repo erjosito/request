@@ -152,6 +152,7 @@ def chkConfig (config):
 					data = payload.read()
 			except Exception as e:
 				print "ERROR: Could not open file %s: %s" % (file, str(e))
+				sys.exit (0)
 
 			# Analyze the file content and the URL for variables, and compare them to the variable list
 			errorsFound += checkVariables (data, localVariables)
@@ -212,11 +213,11 @@ def generateJS (name, data, jsVarList, rollbackTaskName):
 	except Exception as e:
 		print "ERROR: Could not find JavaScript template %s" % jstemplate
 		sys.exit (1)
-	# First we need to escape the quote signs and escape the CR characters
-	# Help: chr(34)=", chr(39)=', chr(92)=\
+	# First we need to escape the quote signs and escape the CR (or LF?) characters
+	# Help: chr(34)=", chr(39)=', chr(92)=\, chr(10)=LF, chr(13)=CR
 	data = data.replace (chr(34), chr(92) + chr(34))
 	data = data.replace (chr(39), chr(92) + chr(34))
-	data = data.replace ("\r", " \\\r")
+	data = data.replace (chr(10), chr(92)+chr(10))
 	# Instead of replacing the variables with its real value, we need to
 	#  change them to JS format. For example, where it said tn-{{tenantName}}
 	#  we need to write tn-"+tenantName+"
@@ -227,7 +228,7 @@ def generateJS (name, data, jsVarList, rollbackTaskName):
 			old = "{{" + varName + "}}"
 			new = '" + ' + varName + ' + "'
 			data = data.replace (old, new)
-		jsVars += "var " + varName + " = input." + varName + "\n"		
+		jsVars += "var " + varName + " = input." + varName + ";\n"		
 	# Now we need to create our JavaScript. There are 3 items we need to
 	#   modify from the JSTemplate:
 	#   1. Create variables (our variable list plus global parameters)
@@ -242,8 +243,14 @@ def generateJS (name, data, jsVarList, rollbackTaskName):
 		url = '/api/node/mo/.json'
 	jscode = jscode.replace ("{{url}}", url)
 	# Set output variables (NOT SUPPORTED YET)
-	# Format: output.TENANT_NAME = tenantName
 	jscode = jscode.replace ("{{outputVariables}}", "")
+
+	# Set HTTP / HTTPS
+	if useHttps:
+		jscode = jscode.replace ("{{protocol}}", "https")
+	else:
+		jscode = jscode.replace ("{{protocol}}", "http")
+	
 	# Now we need to add code to register a rollback task (if one has been provided)
 	if len (rollbackTaskName) > 0:
 		rollbackFunction = generateRollbackFunction (rollbackTaskName, jsVarList)
@@ -673,6 +680,8 @@ if __name__ == "__main__":
 						   help='choose this option to print in stdout the JavaScript code you can use in an UCSD custom task')
 		parser.add_argument('--ucsdwfdx', action="store_true",
 						   help='choose this option to print in stdout the contents of a WFDX file containing custom tasks that can be imported in UCSD')
+		parser.add_argument('--https', action="store_true",
+						   help='choose this option to use HTTPS for the custom tasks that can be imported in UCSD')
 		args = parser.parse_args()
 		cfgFile = args.configFile
 		testVariables = args.testVariables
@@ -680,6 +689,7 @@ if __name__ == "__main__":
 		ucsdjs = args.ucsdjs
 		ucsdwfdx = args.ucsdwfdx
 		rollback = args.rollback
+		useHttps = args.https
 	except Exception as e:
 		parser.print_help ()
 		sys.exit (0)
